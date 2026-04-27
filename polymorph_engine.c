@@ -1,17 +1,8 @@
-/*
- * PolyMorph Engine - High-Performance Payload Transformation Library
- * For Red Team research: testing AV/EDR evasion effectiveness of known payloads
- *
- * Compile: gcc -shared -fPIC -O2 -o polymorph_engine.so polymorph_engine.c -lm
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <stdint.h>
-
-/* ─── Entropy Analysis ─────────────────────────────────────────────────── */
 
 double calc_entropy(const uint8_t *data, size_t len) {
     if (len == 0) return 0.0;
@@ -26,8 +17,6 @@ double calc_entropy(const uint8_t *data, size_t len) {
     }
     return entropy;
 }
-
-/* ─── Bad Character Analysis ───────────────────────────────────────────── */
 
 int find_bad_chars(const uint8_t *data, size_t len,
                    const uint8_t *bad, size_t bad_len,
@@ -44,15 +33,12 @@ int find_bad_chars(const uint8_t *data, size_t len,
     return found;
 }
 
-/* ─── XOR Rolling-Key Encoder ──────────────────────────────────────────── */
-
 void xor_encode(const uint8_t *in, size_t len, uint8_t *out,
                 const uint8_t *key, size_t key_len) {
     for (size_t i = 0; i < len; i++)
         out[i] = in[i] ^ key[i % key_len];
 }
 
-/* Additive key mutation: each successive key byte shifts by delta */
 void xor_rolling_encode(const uint8_t *in, size_t len, uint8_t *out,
                          uint8_t seed, uint8_t delta) {
     uint8_t k = seed;
@@ -61,8 +47,6 @@ void xor_rolling_encode(const uint8_t *in, size_t len, uint8_t *out,
         k = (uint8_t)(k + delta);
     }
 }
-
-/* ─── Bit-Level Transforms ─────────────────────────────────────────────── */
 
 void bit_not(const uint8_t *in, size_t len, uint8_t *out) {
     for (size_t i = 0; i < len; i++) out[i] = ~in[i];
@@ -85,9 +69,6 @@ void byte_swap_pairs(const uint8_t *in, size_t len, uint8_t *out) {
     }
 }
 
-/* ─── Encoding / Representation ────────────────────────────────────────── */
-
-/* Standard hex encoding → "deadbeef..." */
 size_t hex_encode(const uint8_t *in, size_t len, char *out) {
     static const char h[] = "0123456789abcdef";
     for (size_t i = 0; i < len; i++) {
@@ -98,7 +79,6 @@ size_t hex_encode(const uint8_t *in, size_t len, char *out) {
     return len * 2;
 }
 
-/* Custom base64 with caller-supplied 64-char alphabet */
 static const char *B64_STD =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -119,12 +99,6 @@ size_t custom_base64_encode(const uint8_t *in, size_t len,
     return out_len;
 }
 
-/* ─── NOP Sled Insertion ───────────────────────────────────────────────── */
-/*
- * Inserts a NOP-like byte (or user-supplied byte) every `freq` bytes.
- * Returns new length. out must be pre-allocated to at least
- *   len + ceil(len / freq) bytes.
- */
 size_t insert_nops(const uint8_t *in, size_t len, uint8_t *out,
                    size_t freq, uint8_t nop_byte) {
     size_t j = 0;
@@ -136,8 +110,6 @@ size_t insert_nops(const uint8_t *in, size_t len, uint8_t *out,
     return j;
 }
 
-/* ─── Byte Substitution (single-byte Caesar-style) ─────────────────────── */
-
 void byte_add(const uint8_t *in, size_t len, uint8_t *out, uint8_t delta) {
     for (size_t i = 0; i < len; i++)
         out[i] = (uint8_t)(in[i] + delta);
@@ -147,16 +119,11 @@ void byte_sub(const uint8_t *in, size_t len, uint8_t *out, uint8_t delta) {
     byte_add(in, len, out, (uint8_t)(256 - delta));
 }
 
-/* ─── Reverse ───────────────────────────────────────────────────────────── */
-
 void reverse_bytes(const uint8_t *in, size_t len, uint8_t *out) {
     for (size_t i = 0; i < len; i++)
         out[i] = in[len - 1 - i];
 }
 
-/* ─── Frequency / Uniqueness Stats ─────────────────────────────────────── */
-
-/* Byte diversity: 0-255 unique bytes as a ratio (0.0 – 1.0) */
 double byte_diversity(const uint8_t *data, size_t len) {
     if (len == 0) return 0.0;
     uint8_t seen[256] = {0};
@@ -166,7 +133,6 @@ double byte_diversity(const uint8_t *data, size_t len) {
     return (double)count / 256.0;
 }
 
-/* Most frequent byte value */
 uint8_t most_frequent_byte(const uint8_t *data, size_t len) {
     uint64_t freq[256] = {0};
     for (size_t i = 0; i < len; i++) freq[data[i]]++;
@@ -176,21 +142,12 @@ uint8_t most_frequent_byte(const uint8_t *data, size_t len) {
     return best;
 }
 
-/* Null-byte count */
 size_t count_nulls(const uint8_t *data, size_t len) {
     size_t n = 0;
     for (size_t i = 0; i < len; i++) if (data[i] == 0x00) n++;
     return n;
 }
 
-/* ─── Evasion Score Heuristic ───────────────────────────────────────────── */
-/*
- * Very rough heuristic (0-100). Higher = harder to detect by naive sigs:
- *   - High entropy → +30
- *   - High byte diversity → +25
- *   - Few null bytes → +20
- *   - No long repeating runs → +25
- */
 int evasion_score(const uint8_t *data, size_t len) {
     if (len == 0) return 0;
 
@@ -198,7 +155,6 @@ int evasion_score(const uint8_t *data, size_t len) {
     double div  = byte_diversity(data, len);
     double null_ratio = (double)count_nulls(data, len) / (double)len;
 
-    /* Run detection: longest run of same byte */
     size_t max_run = 1, cur_run = 1;
     for (size_t i = 1; i < len; i++) {
         if (data[i] == data[i-1]) { cur_run++; if (cur_run > max_run) max_run = cur_run; }
@@ -207,15 +163,13 @@ int evasion_score(const uint8_t *data, size_t len) {
     double run_penalty = (double)max_run / (double)len;
 
     int score = 0;
-    score += (int)(ent / 8.0 * 30.0);           /* 0-30 */
-    score += (int)(div * 25.0);                  /* 0-25 */
-    score += (int)((1.0 - null_ratio) * 20.0);   /* 0-20 */
-    score += (int)((1.0 - run_penalty) * 25.0);  /* 0-25 */
+    score += (int)(ent / 8.0 * 30.0);
+    score += (int)(div * 25.0);
+    score += (int)((1.0 - null_ratio) * 20.0);
+    score += (int)((1.0 - run_penalty) * 25.0);
     if (score > 100) score = 100;
     return score;
 }
-
-/* ─── C-Array Export ────────────────────────────────────────────────────── */
 
 size_t to_c_array(const uint8_t *data, size_t len,
                   char *out, size_t out_size, const char *var_name) {
