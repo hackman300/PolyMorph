@@ -1,6 +1,6 @@
 # PolyMorph
 
-Say hello to PolyMorph. PolyMorph is a polymorphic payload transformation engine for red team research. The tool helps you test how encoding/obfuscation chains affect the detectability of known payloads.
+PolyMorph is a polymorphic payload transformation engine for red team research. The tool helps you test how encoding/obfuscation chains affect the detectability of known payloads.
 What's included:
 
 polymorph_engine.c — C shared library with 15+ high-speed byte transforms: XOR (fixed & rolling), bit rotation, NOT, byte arithmetic, reversal, NOP insertion, hex/base64 encoding, and heuristic analysis (entropy, byte diversity, null counting, evasion scoring)
